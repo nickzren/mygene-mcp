@@ -1,4 +1,5 @@
-# src/mygene_mcp/__init__.py
-"""MyGene MCP Server - Model Context Protocol server for MyGene.info API."""
+"""MyGene MCP package metadata."""
 
-__version__ = "0.1.0"
+__all__ = ["__version__"]
+
+__version__ = "0.3.0"

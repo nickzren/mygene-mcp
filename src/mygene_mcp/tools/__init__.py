@@ -1,48 +1,59 @@
-# src/mygene_mcp/tools/__init__.py
-"""MyGene MCP tools."""
+"""Public API surfaces for MyGene MCP tool classes.
 
-from .query import QUERY_TOOLS, QueryApi
-from .annotation import ANNOTATION_TOOLS, AnnotationApi
-from .batch import BATCH_TOOLS, BatchApi
-from .interval import INTERVAL_TOOLS, IntervalApi
-from .metadata import METADATA_TOOLS, MetadataApi
-from .expression import EXPRESSION_TOOLS, ExpressionApi
-from .pathway import PATHWAY_TOOLS, PathwayApi
-from .go import GO_TOOLS, GOApi
-from .homology import HOMOLOGY_TOOLS, HomologyApi
-from .disease import DISEASE_TOOLS, DiseaseApi
-from .variant import VARIANT_TOOLS, VariantApi
-from .chemical import CHEMICAL_TOOLS, ChemicalApi
-from .advanced import ADVANCED_TOOLS, AdvancedQueryApi
-from .export import EXPORT_TOOLS, ExportApi
+`ALL_TOOLS` and `API_CLASS_MAP` were removed in v0.3.0. FastMCP now handles tool
+registration and dispatching directly in `mygene_mcp.server`.
+"""
+
+from .advanced import AdvancedQueryApi
+from .annotation import AnnotationApi
+from .batch import BatchApi
+from .chemical import ChemicalApi
+from .disease import DiseaseApi
+from .expression import ExpressionApi
+from .go import GOApi
+from .homology import HomologyApi
+from .interval import IntervalApi
+from .metadata import MetadataApi
+from .pathway import PathwayApi
+from .query import QueryApi
+from .variant import VariantApi
+from .export import ExportApi
 
 __all__ = [
-    "QUERY_TOOLS",
-    "QueryApi",
-    "ANNOTATION_TOOLS", 
-    "AnnotationApi",
-    "BATCH_TOOLS",
-    "BatchApi",
-    "INTERVAL_TOOLS",
-    "IntervalApi",
-    "METADATA_TOOLS",
-    "MetadataApi",
-    "EXPRESSION_TOOLS",
-    "ExpressionApi",
-    "PATHWAY_TOOLS",
-    "PathwayApi",
-    "GO_TOOLS",
-    "GOApi",
-    "HOMOLOGY_TOOLS",
-    "HomologyApi",
-    "DISEASE_TOOLS",
-    "DiseaseApi",
-    "VARIANT_TOOLS",
-    "VariantApi",
-    "CHEMICAL_TOOLS",
-    "ChemicalApi",
-    "ADVANCED_TOOLS",
     "AdvancedQueryApi",
-    "EXPORT_TOOLS",
+    "AnnotationApi",
+    "BatchApi",
+    "ChemicalApi",
+    "DiseaseApi",
+    "ExpressionApi",
+    "GOApi",
+    "HomologyApi",
+    "IntervalApi",
+    "MetadataApi",
+    "PathwayApi",
+    "QueryApi",
+    "VariantApi",
     "ExportApi",
 ]
+
+
+def __getattr__(name: str):
+    if name == "ALL_TOOLS":
+        import warnings
+
+        warnings.warn(
+            "ALL_TOOLS is deprecated in v0.3.0. Tools are now managed by FastMCP.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return []
+    if name == "API_CLASS_MAP":
+        import warnings
+
+        warnings.warn(
+            "API_CLASS_MAP is deprecated in v0.3.0. FastMCP handles tool dispatch.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return {}
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

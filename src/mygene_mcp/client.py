@@ -1,6 +1,4 @@
 # src/mygene_mcp/client.py
-"""MyGene API client."""
-
 import httpx
 from typing import Any, Dict, Optional
 
@@ -31,6 +29,10 @@ class MyGeneClient:
                 raise MyGeneError(f"HTTP error {e.response.status_code}: {e.response.text}")
             except Exception as e:
                 raise MyGeneError(f"Request failed: {str(e)}")
+
+    async def close(self) -> None:
+        """Close any persistent resources (placeholder for future enhancements)."""
+        return None
     
     async def post(self, endpoint: str, json_data: Any) -> Any:
         """Make POST request to MyGene API."""

@@ -1,178 +1,318 @@
-# src/mygene_mcp/server.py
-"""MyGene MCP Server implementation."""
+"""FastMCP-backed server for MyGene MCP tools."""
+from __future__ import annotations
 
-import asyncio
-import json
-from typing import Any, Dict, Type
+import anyio
+import functools
+import inspect
 import logging
+import os
+from contextlib import asynccontextmanager
+from typing import Any, Callable, Dict, Optional, Tuple
 
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
-import mcp.types as types
+import mcp.types as mcp_types
+from fastmcp import FastMCP
+from mcp.server.lowlevel.server import NotificationOptions
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
+from . import __version__ as package_version
 from .client import MyGeneClient
 from .tools import (
-    QUERY_TOOLS, QueryApi,
-    ANNOTATION_TOOLS, AnnotationApi,
-    BATCH_TOOLS, BatchApi,
-    INTERVAL_TOOLS, IntervalApi,
-    METADATA_TOOLS, MetadataApi,
-    EXPRESSION_TOOLS, ExpressionApi,
-    PATHWAY_TOOLS, PathwayApi,
-    GO_TOOLS, GOApi,
-    HOMOLOGY_TOOLS, HomologyApi,
-    DISEASE_TOOLS, DiseaseApi,
-    VARIANT_TOOLS, VariantApi,
-    CHEMICAL_TOOLS, ChemicalApi,
-    ADVANCED_TOOLS, AdvancedQueryApi,
-    EXPORT_TOOLS, ExportApi
+    AdvancedQueryApi,
+    AnnotationApi,
+    BatchApi,
+    ChemicalApi,
+    DiseaseApi,
+    ExportApi,
+    ExpressionApi,
+    GOApi,
+    HomologyApi,
+    IntervalApi,
+    MetadataApi,
+    PathwayApi,
+    QueryApi,
+    VariantApi,
 )
 
-logger = logging.getLogger(__name__)
+__all__ = [
+    "mcp",
+    "get_client",
+    "main",
+]
+
+# ---------------------------------------------------------------------------
+# Logging setup
+# ---------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Combine all tools
-ALL_TOOLS = (
-    QUERY_TOOLS +
-    ANNOTATION_TOOLS +
-    BATCH_TOOLS +
-    INTERVAL_TOOLS +
-    METADATA_TOOLS +
-    EXPRESSION_TOOLS +
-    PATHWAY_TOOLS +
-    GO_TOOLS +
-    HOMOLOGY_TOOLS +
-    DISEASE_TOOLS +
-    VARIANT_TOOLS +
-    CHEMICAL_TOOLS +
-    ADVANCED_TOOLS +
-    EXPORT_TOOLS
+
+# ---------------------------------------------------------------------------
+# Client lifecycle management
+# ---------------------------------------------------------------------------
+_client: Optional[MyGeneClient] = None
+
+
+def _load_client_config() -> Dict[str, Any]:
+    """Load client configuration from environment variables."""
+    return {
+        "base_url": os.getenv("MYGENE_BASE_URL", "https://mygene.info/v3"),
+        "timeout": float(os.getenv("MYGENE_TIMEOUT", "30.0")),
+    }
+
+
+def get_client() -> MyGeneClient:
+    """Return the active MyGeneClient or raise if not initialised."""
+    if _client is None:
+        raise RuntimeError(
+            "MyGeneClient not initialised. Tools must be called through the running MCP server."
+        )
+    return _client
+
+
+@asynccontextmanager
+async def lifespan(server: FastMCP):
+    """Initialise and clean up shared resources for FastMCP."""
+    global _client
+
+    config = _load_client_config()
+    logger.info(
+        "Starting MyGene MCP server base_url=%s timeout=%s",
+        config["base_url"],
+        config["timeout"],
+    )
+
+    _client = MyGeneClient(
+        base_url=config["base_url"],
+        timeout=config["timeout"],
+    )
+
+    try:
+        yield
+    finally:
+        if _client is not None:
+            await _client.close()
+            _client = None
+            logger.info("MyGene MCP server shut down cleanly")
+
+
+# ---------------------------------------------------------------------------
+# FastMCP initialisation
+# ---------------------------------------------------------------------------
+mcp = FastMCP(
+    name="mygene-mcp",
+    version=package_version,
+    lifespan=lifespan,
 )
 
-# Create API class mapping
-API_CLASS_MAP = {
-    # Query tools
-    "query_genes": QueryApi,
-    "search_by_field": QueryApi,
-    "get_field_statistics": QueryApi,
-    # Annotation tools
-    "get_gene_annotation": AnnotationApi,
-    # Batch tools
-    "query_genes_batch": BatchApi,
-    "get_genes_batch": BatchApi,
-    # Interval tools
-    "query_genes_by_interval": IntervalApi,
-    # Metadata tools
-    "get_mygene_metadata": MetadataApi,
-    "get_available_fields": MetadataApi,
-    "get_species_list": MetadataApi,
-    # Expression tools
-    "query_genes_by_expression": ExpressionApi,
-    "get_gene_expression_profile": ExpressionApi,
-    # Pathway tools
-    "query_genes_by_pathway": PathwayApi,
-    "get_gene_pathways": PathwayApi,
-    # GO tools
-    "query_genes_by_go_term": GOApi,
-    "get_gene_go_annotations": GOApi,
-    # Homology tools
-    "get_gene_orthologs": HomologyApi,
-    "query_homologous_genes": HomologyApi,
-    # Disease tools
-    "query_genes_by_disease": DiseaseApi,
-    "get_gene_disease_associations": DiseaseApi,
-    # Variant tools
-    "get_gene_variants": VariantApi,
-    # Chemical tools
-    "query_genes_by_chemical": ChemicalApi,
-    "get_gene_chemical_interactions": ChemicalApi,
-    # Advanced tools
-    "build_complex_query": AdvancedQueryApi,
-    "query_with_filters": AdvancedQueryApi,
-    # Export tools
-    "export_gene_list": ExportApi,
-}
+_query_api = QueryApi()
+_annotation_api = AnnotationApi()
+_batch_api = BatchApi()
+_interval_api = IntervalApi()
+_metadata_api = MetadataApi()
+_expression_api = ExpressionApi()
+_pathway_api = PathwayApi()
+_go_api = GOApi()
+_homology_api = HomologyApi()
+_disease_api = DiseaseApi()
+_variant_api = VariantApi()
+_chemical_api = ChemicalApi()
+_advanced_api = AdvancedQueryApi()
+_export_api = ExportApi()
 
 
-class MyGeneMcpServer:
-    """MCP Server for MyGene.info data."""
-    
-    def __init__(self):
-        self.server_name = "mygene-mcp"
-        self.server_version = "0.2.0"
-        self.mcp_server = Server(self.server_name, self.server_version)
-        self.client = MyGeneClient()
-        self._api_instances: Dict[Type, Any] = {}
-        self._setup_handlers()
-        logger.info(f"{self.server_name} v{self.server_version} initialized.")
-    
-    def _setup_handlers(self):
-        """Register MCP handlers."""
-        
-        @self.mcp_server.list_tools()
-        async def handle_list_tools() -> list[types.Tool]:
-            """Returns the list of all available tools."""
-            return ALL_TOOLS
-        
-        @self.mcp_server.call_tool()
-        async def handle_call_tool(
-            name: str, arguments: Dict[str, Any]
-        ) -> list[types.TextContent]:
-            """Handles a tool call request."""
-            logger.info(f"Handling call for tool: '{name}'")
-            
-            try:
-                if name not in API_CLASS_MAP:
-                    raise ValueError(f"Unknown tool: {name}")
-                
-                api_class = API_CLASS_MAP[name]
-                
-                if api_class not in self._api_instances:
-                    self._api_instances[api_class] = api_class()
-                
-                api_instance = self._api_instances[api_class]
-                
-                if not hasattr(api_instance, name):
-                    raise ValueError(f"Tool method '{name}' not found")
-                
-                func_to_call = getattr(api_instance, name)
-                result_data = await func_to_call(self.client, **arguments)
-                
-                result_json = json.dumps(result_data, indent=2)
-                return [types.TextContent(type="text", text=result_json)]
-            
-            except Exception as e:
-                logger.error(f"Error calling tool '{name}': {str(e)}", exc_info=True)
-                error_response = {
-                    "error": type(e).__name__,
-                    "message": str(e),
-                    "tool_name": name
-                }
-                return [types.TextContent(type="text", text=json.dumps(error_response, indent=2))]
-    
-    async def run(self):
-        """Starts the MCP server."""
-        logger.info(f"Starting {self.server_name} v{self.server_version}...")
-        
-        async with stdio_server() as (read_stream, write_stream):
-            await self.mcp_server.run(
-                read_stream, 
-                write_stream,
-                self.mcp_server.create_initialization_options()
-            )
+def _make_tool_wrapper(method: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap an API coroutine so the shared client is injected automatically."""
+
+    @functools.wraps(method)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        client = get_client()
+        return await method(client, *args, **kwargs)
+
+    signature = inspect.signature(method)
+    params = list(signature.parameters.values())[1:]
+    wrapper.__signature__ = signature.replace(parameters=params)  # type: ignore[attr-defined]
+    return wrapper
 
 
-def main():
-    """Main entry point."""
-    server = MyGeneMcpServer()
+def register_all_api_methods() -> None:
+    """Register every coroutine defined on the API classes as FastMCP tools."""
+    api_instances: Tuple[Any, ...] = (
+        _query_api,
+        _annotation_api,
+        _batch_api,
+        _interval_api,
+        _metadata_api,
+        _expression_api,
+        _pathway_api,
+        _go_api,
+        _homology_api,
+        _disease_api,
+        _variant_api,
+        _chemical_api,
+        _advanced_api,
+        _export_api,
+    )
+
+    for api in api_instances:
+        for name in dir(api):
+            if name.startswith("_"):
+                continue
+            method = getattr(api, name)
+            if not inspect.iscoroutinefunction(method):
+                continue
+            if name in getattr(mcp._tool_manager, "_tools", {}):
+                logger.debug("Tool already registered: %s", name)
+                continue
+            wrapper = _make_tool_wrapper(method)
+            mcp.tool(name=name)(wrapper)
+            logger.debug("Registered tool: %s", name)
+
+
+register_all_api_methods()
+
+
+# ---------------------------------------------------------------------------
+# Deprecated module-level guidance
+# ---------------------------------------------------------------------------
+
+def __getattr__(name: str) -> Any:  # pragma: no cover - guidance only
+    if name == "ALL_TOOLS":
+        raise AttributeError(
+            "ALL_TOOLS has been removed in v0.3.0. Use FastMCP list_tools instead."
+        )
+    if name == "API_CLASS_MAP":
+        raise AttributeError(
+            "API_CLASS_MAP has been removed in v0.3.0. Tool dispatch is handled by FastMCP."
+        )
+    raise AttributeError(name)
+
+
+# ---------------------------------------------------------------------------
+# Discovery endpoints for HTTP/SSE transports
+# ---------------------------------------------------------------------------
+
+
+@mcp.custom_route("/.well-known/mcp.json", methods=["GET"], include_in_schema=False)
+async def discovery_endpoint(request: Request) -> JSONResponse:
+    """Expose MCP discovery metadata for HTTP/SSE clients."""
+
+    base_url = str(request.base_url).rstrip("/")
+    sse_path = mcp._deprecated_settings.sse_path.lstrip("/")
+    message_path = mcp._deprecated_settings.message_path.lstrip("/")
+    http_path = mcp._deprecated_settings.streamable_http_path.lstrip("/")
+
+    capabilities = mcp._mcp_server.get_capabilities(
+        NotificationOptions(),
+        experimental_capabilities={}
+    )
+
+    transports: Dict[str, Dict[str, str]] = {
+        "sse": {
+            "url": f"{base_url}/{sse_path}",
+            "messageUrl": f"{base_url}/{message_path}",
+        }
+    }
+
+    transports["http"] = {
+        "url": f"{base_url}/{http_path}",
+    }
+
+    discovery = {
+        "protocolVersion": mcp_types.LATEST_PROTOCOL_VERSION,
+        "server": {
+            "name": mcp._mcp_server.name,
+            "version": mcp._mcp_server.version,
+            "instructions": mcp._mcp_server.instructions,
+        },
+        "capabilities": capabilities.model_dump(mode="json"),
+        "transports": transports,
+    }
+
+    return JSONResponse(discovery)
+
+
+@mcp.custom_route("/", methods=["GET"], include_in_schema=False)
+async def root_health(_: Request) -> JSONResponse:
+    """Simple health check endpoint."""
+
+    return JSONResponse({"status": "ok"})
+
+
+@mcp.custom_route(mcp._deprecated_settings.sse_path, methods=["POST"], include_in_schema=False)
+async def sse_message_fallback(_: Request) -> Response:
+    """Gracefully handle clients that POST to the SSE endpoint."""
+
+    return Response(status_code=204)
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="MyGene MCP Server",
+        epilog="Environment overrides: MCP_TRANSPORT, FASTMCP_SERVER_HOST, FASTMCP_SERVER_PORT",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse", "http"],
+        default=os.getenv("MCP_TRANSPORT", "stdio"),
+        help="Transport protocol to expose (stdio, sse, or http)",
+    )
+    parser.add_argument(
+        "--host",
+        default=os.getenv("FASTMCP_SERVER_HOST", "0.0.0.0"),
+        help="Host for SSE transport (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("FASTMCP_SERVER_PORT", "8000")),
+        help="Port for SSE transport (default: 8000)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose (DEBUG level) logging",
+    )
+
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    if args.transport in {"sse", "http"}:
+        os.environ["FASTMCP_SERVER_HOST"] = args.host
+        os.environ["FASTMCP_SERVER_PORT"] = str(args.port)
+        if hasattr(mcp, "settings"):
+            mcp.settings.host = args.host  # type: ignore[attr-defined]
+            mcp.settings.port = args.port  # type: ignore[attr-defined]
+        logger.info("Configured %s host=%s port=%s", args.transport.upper(), args.host, args.port)
+
+    logger.info(
+        "Starting MyGene MCP server (transport=%s, host=%s, port=%s)",
+        args.transport,
+        args.host,
+        args.port,
+    )
+
     try:
-        asyncio.run(server.run())
-    except KeyboardInterrupt:
-        logger.info("Server interrupted by user.")
-    except Exception as e:
-        logger.error(f"Server error: {e}")
+        if args.transport == "http":
+            async def run_http() -> None:
+                await mcp.run_http_async(host=args.host, port=args.port)
+
+            anyio.run(run_http)
+        else:
+            mcp.run(transport=args.transport)
+    except KeyboardInterrupt:  # pragma: no cover - user interaction
+        logger.info("Server interrupted by user")
+    except Exception:  # pragma: no cover - unexpected runtime failure
+        logger.exception("Server encountered an unrecoverable error")
         raise
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
