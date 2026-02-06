@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/metadata.py
 """Metadata and utility tools."""
 
 from typing import Any, Dict
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class MetadataApi:
     """Tools for retrieving MyGene.info metadata."""
@@ -73,30 +70,3 @@ class MetadataApi:
             "species": species_list
         }
 
-
-METADATA_TOOLS = [
-    types.Tool(
-        name="get_mygene_metadata",
-        description="Get metadata about MyGene.info API including data sources and statistics",
-        inputSchema={
-            "type": "object",
-            "properties": {}
-        }
-    ),
-    types.Tool(
-        name="get_available_fields",
-        description="Get a list of all available fields in MyGene.info",
-        inputSchema={
-            "type": "object",
-            "properties": {}
-        }
-    ),
-    types.Tool(
-        name="get_species_list",
-        description="Get supported species with taxonomy IDs and gene counts",
-        inputSchema={
-            "type": "object",
-            "properties": {}
-        }
-    )
-]

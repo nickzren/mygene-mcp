@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/interval.py
 """Genomic interval query tools."""
 
 from typing import Any, Dict, Optional
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class IntervalApi:
     """Tool for querying genes by genomic interval."""
@@ -47,43 +44,3 @@ class IntervalApi:
             "hits": result.get("hits", [])
         }
 
-
-INTERVAL_TOOLS = [
-    types.Tool(
-        name="query_genes_by_interval",
-        description="Find genes in a genomic region by chromosome position",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "chr": {
-                    "type": "string",
-                    "description": "Chromosome (e.g., '1', 'X', 'chr1')"
-                },
-                "start": {
-                    "type": "integer",
-                    "description": "Start position"
-                },
-                "end": {
-                    "type": "integer",
-                    "description": "End position"
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species for the query",
-                    "default": "human"
-                },
-                "fields": {
-                    "type": "string",
-                    "description": "Comma-separated fields to return",
-                    "default": "symbol,name,taxid,entrezgene"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results to return",
-                    "default": 10
-                }
-            },
-            "required": ["chr", "start", "end"]
-        }
-    )
-]

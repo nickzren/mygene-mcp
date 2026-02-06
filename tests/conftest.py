@@ -69,8 +69,7 @@ def sample_batch_results():
             "name": "cyclin dependent kinase 2",
             "query": "CDK2",
             "symbol": "CDK2",
-            "taxid": 9606,
-            "found": True
+            "taxid": 9606
         },
         {
             "_id": "7157",
@@ -79,12 +78,11 @@ def sample_batch_results():
             "name": "tumor protein p53",
             "query": "TP53",
             "symbol": "TP53",
-            "taxid": 9606,
-            "found": True
+            "taxid": 9606
         },
         {
             "query": "INVALID_GENE",
-            "found": False
+            "notfound": True
         }
     ]
 

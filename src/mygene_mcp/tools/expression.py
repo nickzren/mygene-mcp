@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/expression.py
 """Gene expression tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class ExpressionApi:
     """Tools for gene expression data queries."""
@@ -25,7 +22,7 @@ class ExpressionApi:
         
         if tissue:
             # Check multiple expression sources
-            tissue_query = f'(hpa.tissue."{tissue}" OR gtex.tissue."{tissue}" OR biogps.tissue."{tissue}")'
+            tissue_query = f'(hpa.tissue:"{tissue}" OR gtex.tissue:"{tissue}" OR biogps.tissue:"{tissue}")'
             query_parts.append(tissue_query)
         
         if cell_type:
@@ -112,63 +109,3 @@ class ExpressionApi:
             "success": True,
             "expression_profile": expression_profile
         }
-
-
-EXPRESSION_TOOLS = [
-    types.Tool(
-        name="query_genes_by_expression",
-        description="Find genes based on expression patterns in tissues or cell types",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "tissue": {
-                    "type": "string",
-                    "description": "Tissue type (e.g., 'brain', 'liver', 'heart')"
-                },
-                "cell_type": {
-                    "type": "string",
-                    "description": "Cell type or subcellular location"
-                },
-                "expression_level": {
-                    "type": "string",
-                    "description": "Expression level: 'high', 'medium', 'low', 'not detected'",
-                    "enum": ["high", "medium", "low", "not detected"]
-                },
-                "dataset": {
-                    "type": "string",
-                    "description": "Dataset source: 'hpa', 'gtex', 'biogps'",
-                    "enum": ["hpa", "gtex", "biogps"]
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter",
-                    "default": "human"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results",
-                    "default": 10
-                }
-            }
-        }
-    ),
-    types.Tool(
-        name="get_gene_expression_profile",
-        description="Get comprehensive expression profile for a gene across tissues and datasets",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez, Ensembl, or symbol)"
-                },
-                "datasets": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Specific datasets to include (default: all)"
-                }
-            },
-            "required": ["gene_id"]
-        }
-    )
-]

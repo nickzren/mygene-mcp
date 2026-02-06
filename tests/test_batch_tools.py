@@ -29,7 +29,7 @@ class TestBatchTools:
         mock_client.post.assert_called_once_with(
             "query",
             {
-                "ids": ["CDK2", "TP53", "INVALID_GENE"],
+                "q": ["CDK2", "TP53", "INVALID_GENE"],
                 "scopes": "entrezgene,ensemblgene,symbol",
                 "fields": "symbol,name,taxid,entrezgene",
                 "returnall": True
@@ -54,7 +54,7 @@ class TestBatchTools:
         mock_client.post.assert_called_with(
             "query",
             {
-                "ids": ["NM_001798", "NP_001789"],
+                "q": ["NM_001798", "NP_001789"],
                 "scopes": "refseq.rna,refseq.protein",
                 "fields": "symbol,entrezgene",
                 "returnall": True
@@ -78,7 +78,7 @@ class TestBatchTools:
         mock_client.post.assert_called_with(
             "query",
             {
-                "ids": ["CDK2", "TP53"],
+                "q": ["CDK2", "TP53"],
                 "scopes": "entrezgene,ensemblgene,symbol",
                 "fields": "symbol,name,taxid,entrezgene",
                 "species": "human",
@@ -90,7 +90,7 @@ class TestBatchTools:
     async def test_query_genes_batch_no_returnall(self, mock_client, sample_batch_results):
         """Test batch query without returning missing genes."""
         # Only return found results
-        found_only = [r for r in sample_batch_results if r.get("found", False)]
+        found_only = [r for r in sample_batch_results if not r.get("notfound", False)]
         mock_client.post.return_value = found_only
         
         api = BatchApi()
@@ -106,7 +106,7 @@ class TestBatchTools:
         mock_client.post.assert_called_with(
             "query",
             {
-                "ids": ["CDK2", "TP53"],
+                "q": ["CDK2", "TP53"],
                 "scopes": "entrezgene,ensemblgene,symbol",
                 "fields": "symbol,name,taxid,entrezgene",
                 "returnall": False
@@ -304,9 +304,9 @@ class TestBatchTools:
     async def test_query_genes_batch_all_missing(self, mock_client):
         """Test batch query where all genes are missing."""
         all_missing = [
-            {"query": "FAKE1", "found": False},
-            {"query": "FAKE2", "found": False},
-            {"query": "FAKE3", "found": False}
+            {"query": "FAKE1", "notfound": True},
+            {"query": "FAKE2", "notfound": True},
+            {"query": "FAKE3", "notfound": True}
         ]
         mock_client.post.return_value = all_missing
         
@@ -329,8 +329,7 @@ class TestBatchTools:
             {
                 "_id": "1017",
                 "symbol": "CDK2",
-                "ensembl": {"gene": "ENSG00000123374"},
-                "found": True
+                "ensembl": {"gene": "ENSG00000123374"}
             }
         ]
         
@@ -346,10 +345,40 @@ class TestBatchTools:
         mock_client.post.assert_called_with(
             "query",
             {
-                "ids": ["CDK2"],
+                "q": ["CDK2"],
                 "scopes": "entrezgene,ensemblgene,symbol",
                 "fields": "symbol,name,taxid,entrezgene",
                 "dotfield": False,
                 "returnall": True
             }
         )
+
+    @pytest.mark.asyncio
+    async def test_query_genes_batch_dotfield_none_not_sent(self, mock_client):
+        """Test dotfield is omitted when explicitly set to None."""
+        mock_client.post.return_value = []
+
+        api = BatchApi()
+        await api.query_genes_batch(
+            mock_client,
+            gene_ids=["CDK2"],
+            dotfield=None
+        )
+
+        payload = mock_client.post.call_args[0][1]
+        assert "dotfield" not in payload
+
+    @pytest.mark.asyncio
+    async def test_get_genes_batch_dotfield_none_not_sent(self, mock_client):
+        """Test dotfield is omitted for get_genes_batch when set to None."""
+        mock_client.post.return_value = []
+
+        api = BatchApi()
+        await api.get_genes_batch(
+            mock_client,
+            gene_ids=["1017"],
+            dotfield=None
+        )
+
+        payload = mock_client.post.call_args[0][1]
+        assert "dotfield" not in payload

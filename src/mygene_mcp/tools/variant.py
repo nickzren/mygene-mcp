@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/variant.py
 """Genetic variant tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class VariantApi:
     """Tools for genetic variant queries."""
@@ -55,6 +52,7 @@ class VariantApi:
                     }
                     
                     # Add variant details
+                    has_matching_variant_type = variant_type is None
                     if "measure_set" in rcv:
                         measure_set = rcv["measure_set"]
                         if "measure" in measure_set:
@@ -65,11 +63,13 @@ class VariantApi:
                             for measure in measures:
                                 if variant_type and measure.get("type") != variant_type:
                                     continue
+                                has_matching_variant_type = True
                                 
                                 variant_info["variant_type"] = measure.get("type")
                                 variant_info["name"] = measure.get("name")
-                    
-                    clinvar_variants.append(variant_info)
+
+                    if has_matching_variant_type:
+                        clinvar_variants.append(variant_info)
             
             variants_data["variant_sources"]["clinvar"] = {
                 "total": len(clinvar_variants),
@@ -133,31 +133,3 @@ class VariantApi:
             "total_variants": total_variants,
             "variants": variants_data
         }
-
-
-VARIANT_TOOLS = [
-    types.Tool(
-        name="get_gene_variants",
-        description="Get genetic variants associated with a gene from ClinVar and other sources",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez, Ensembl, or symbol)"
-                },
-                "variant_type": {
-                    "type": "string",
-                    "description": "Type of variant",
-                    "enum": ["Deletion", "Duplication", "Insertion", "Indel", "single nucleotide variant"]
-                },
-                "clinical_significance": {
-                    "type": "string",
-                    "description": "Clinical significance filter",
-                    "enum": ["Pathogenic", "Likely pathogenic", "Uncertain significance", "Likely benign", "Benign"]
-                }
-            },
-            "required": ["gene_id"]
-        }
-    )
-]

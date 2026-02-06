@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/go.py
 """Gene Ontology (GO) tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class GOApi:
     """Tools for Gene Ontology queries."""
@@ -136,72 +133,3 @@ class GOApi:
             "go_annotations": go_annotations
         }
 
-
-GO_TOOLS = [
-    types.Tool(
-        name="query_genes_by_go_term",
-        description="Find genes associated with specific GO terms and evidence",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "go_id": {
-                    "type": "string",
-                    "description": "GO ID (e.g., 'GO:0006468' for protein phosphorylation)"
-                },
-                "go_name": {
-                    "type": "string",
-                    "description": "GO term name (e.g., 'protein kinase activity')"
-                },
-                "evidence_codes": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Evidence codes (e.g., ['EXP', 'IDA', 'IMP'])"
-                },
-                "qualifier": {
-                    "type": "string",
-                    "description": "GO qualifier",
-                    "enum": ["enables", "NOT", "contributes_to", "involved_in", "located_in"]
-                },
-                "aspect": {
-                    "type": "string",
-                    "description": "GO aspect",
-                    "enum": ["BP", "MF", "CC"]
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter",
-                    "default": "human"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results",
-                    "default": 10
-                }
-            }
-        }
-    ),
-    types.Tool(
-        name="get_gene_go_annotations",
-        description="Get detailed GO annotations for a gene with evidence codes",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez, Ensembl, or symbol)"
-                },
-                "aspect": {
-                    "type": "string",
-                    "description": "Filter by GO aspect",
-                    "enum": ["BP", "MF", "CC"]
-                },
-                "evidence_codes": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Filter by evidence codes"
-                }
-            },
-            "required": ["gene_id"]
-        }
-    )
-]

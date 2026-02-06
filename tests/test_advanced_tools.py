@@ -181,6 +181,33 @@ class TestAdvancedTools:
         
         call_args = mock_client.get.call_args[1]["params"]
         assert call_args["facets"] == "type_of_gene,taxid"
+
+    @pytest.mark.asyncio
+    async def test_build_complex_query_with_aggregation_size_option(self, mock_client):
+        """Test aggregation size option does not become a facet field."""
+        mock_client.get.return_value = {
+            "total": 100,
+            "took": 20,
+            "hits": [],
+            "facets": {
+                "taxid": {"terms": [{"term": 9606, "count": 60}]}
+            }
+        }
+
+        api = AdvancedQueryApi()
+        result = await api.build_complex_query(
+            mock_client,
+            must=[{"field": "taxid", "value": "9606"}],
+            aggregations={
+                "size": 50,
+                "taxid": {}
+            },
+        )
+
+        assert result["success"] is True
+        call_args = mock_client.get.call_args[1]["params"]
+        assert call_args["facets"] == "taxid"
+        assert call_args["facet_size"] == 50
     
     @pytest.mark.asyncio
     async def test_build_complex_query_empty(self, mock_client):

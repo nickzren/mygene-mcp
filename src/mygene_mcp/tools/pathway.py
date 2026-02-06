@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/pathway.py
 """Pathway analysis tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class PathwayApi:
     """Tools for pathway-related queries."""
@@ -110,57 +107,3 @@ class PathwayApi:
             "pathways": pathways
         }
 
-
-PATHWAY_TOOLS = [
-    types.Tool(
-        name="query_genes_by_pathway",
-        description="Find genes involved in specific biological pathways",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "pathway_id": {
-                    "type": "string",
-                    "description": "Pathway ID (e.g., 'hsa04110' for KEGG cell cycle)"
-                },
-                "pathway_name": {
-                    "type": "string",
-                    "description": "Pathway name (e.g., 'Cell cycle', 'Apoptosis')"
-                },
-                "source": {
-                    "type": "string",
-                    "description": "Pathway database source",
-                    "enum": ["kegg", "reactome", "wikipathways", "netpath", "biocarta", "pid"]
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter",
-                    "default": "human"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results",
-                    "default": 10
-                }
-            }
-        }
-    ),
-    types.Tool(
-        name="get_gene_pathways",
-        description="Get all pathways associated with a specific gene",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez, Ensembl, or symbol)"
-                },
-                "sources": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Filter by specific pathway sources"
-                }
-            },
-            "required": ["gene_id"]
-        }
-    )
-]

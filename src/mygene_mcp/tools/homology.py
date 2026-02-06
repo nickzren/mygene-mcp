@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/homology.py
 """Homology and ortholog tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class HomologyApi:
     """Tools for homology and ortholog queries."""
@@ -155,61 +152,3 @@ class HomologyApi:
             "homology_type": homology_type
         }
 
-
-HOMOLOGY_TOOLS = [
-    types.Tool(
-        name="get_gene_orthologs",
-        description="Get orthologous genes across different species",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez, Ensembl, or symbol)"
-                },
-                "target_species": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Target species (e.g., ['human', 'mouse', 'rat'] or taxids)"
-                },
-                "sources": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Homology data sources to use",
-                    "enum": ["homologene", "ensembl", "pantherdb"]
-                }
-            },
-            "required": ["gene_id"]
-        }
-    ),
-    types.Tool(
-        name="query_homologous_genes",
-        description="Find homologous genes with the same symbol across species",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_symbol": {
-                    "type": "string",
-                    "description": "Gene symbol to search for"
-                },
-                "species_list": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of species to search"
-                },
-                "homology_type": {
-                    "type": "string",
-                    "description": "Type of homology",
-                    "default": "ortholog",
-                    "enum": ["ortholog", "paralog"]
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Results per species",
-                    "default": 10
-                }
-            },
-            "required": ["gene_symbol", "species_list"]
-        }
-    )
-]

@@ -319,3 +319,36 @@ class TestVariantTools:
         
         assert result["success"] is True
         assert result["total_variants"] == 2  # Should match both
+
+    @pytest.mark.asyncio
+    async def test_get_gene_variants_type_filter_excludes_non_matching_rcv(self, mock_client):
+        """Test variant type filter excludes RCV entries without matching measures."""
+        mock_client.get.return_value = {
+            "symbol": "GENE",
+            "clinvar": {
+                "rcv": [
+                    {
+                        "accession": {"accession": "RCV001"},
+                        "clinical_significance": "Pathogenic",
+                        "measure_set": {"measure": {"type": "Insertion", "name": "ins"}}
+                    },
+                    {
+                        "accession": {"accession": "RCV002"},
+                        "clinical_significance": "Pathogenic",
+                        "measure_set": {"measure": {"type": "Deletion", "name": "del"}}
+                    },
+                ]
+            }
+        }
+
+        api = VariantApi()
+        result = await api.get_gene_variants(
+            mock_client,
+            gene_id="1",
+            variant_type="Deletion"
+        )
+
+        variants = result["variants"]["variant_sources"]["clinvar"]["variants"]
+        assert result["total_variants"] == 1
+        assert len(variants) == 1
+        assert variants[0]["accession"] == "RCV002"

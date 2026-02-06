@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/advanced.py
 """Advanced query building tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class AdvancedQueryApi:
     """Tools for building advanced queries."""
@@ -78,9 +75,20 @@ class AdvancedQueryApi:
         
         # Add aggregations if specified
         if aggregations:
-            facets = ",".join(aggregations.keys())
-            params["facets"] = facets
-            params["facet_size"] = aggregations.get("size", 10)
+            facet_fields: List[str] = []
+            facet_size = 10
+            for field, options in aggregations.items():
+                if field == "size" and isinstance(options, int):
+                    facet_size = options
+                    continue
+                if field == "fields" and isinstance(options, list):
+                    facet_fields.extend(str(option) for option in options)
+                    continue
+                facet_fields.append(field)
+
+            if facet_fields:
+                params["facets"] = ",".join(facet_fields)
+                params["facet_size"] = facet_size
         
         result = await client.get("query", params=params)
         
@@ -179,112 +187,3 @@ class AdvancedQueryApi:
             "total": result.get("total", 0),
             "hits": result.get("hits", [])
         }
-
-
-ADVANCED_TOOLS = [
-    types.Tool(
-        name="build_complex_query",
-        description="Build complex boolean queries with must/should/must_not clauses",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "must": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "field": {"type": "string"},
-                            "value": {"type": "string"}
-                        }
-                    },
-                    "description": "Conditions that must all be true (AND)"
-                },
-                "should": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "field": {"type": "string"},
-                            "value": {"type": "string"}
-                        }
-                    },
-                    "description": "At least one condition must be true (OR)"
-                },
-                "must_not": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "field": {"type": "string"},
-                            "value": {"type": "string"}
-                        }
-                    },
-                    "description": "Conditions that must not be true (NOT)"
-                },
-                "filters": {
-                    "type": "object",
-                    "description": "Additional filters as field:value pairs"
-                },
-                "aggregations": {
-                    "type": "object",
-                    "description": "Fields to aggregate with optional size"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results",
-                    "default": 10
-                }
-            }
-        }
-    ),
-    types.Tool(
-        name="query_with_filters",
-        description="Query genes with multiple predefined filters",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "q": {
-                    "type": "string",
-                    "description": "Base query string"
-                },
-                "type_of_gene": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Gene types (e.g., ['protein-coding', 'ncRNA'])"
-                },
-                "chromosome": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Chromosomes (e.g., ['1', '2', 'X'])"
-                },
-                "taxid": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                    "description": "Taxonomy IDs (e.g., [9606, 10090])"
-                },
-                "ensembl_gene_exists": {
-                    "type": "boolean",
-                    "description": "Filter by Ensembl annotation presence"
-                },
-                "refseq_exists": {
-                    "type": "boolean",
-                    "description": "Filter by RefSeq annotation presence"
-                },
-                "has_go_annotation": {
-                    "type": "boolean",
-                    "description": "Filter by GO annotation presence"
-                },
-                "has_pathway_annotation": {
-                    "type": "boolean",
-                    "description": "Filter by pathway annotation presence"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results",
-                    "default": 10
-                }
-            },
-            "required": ["q"]
-        }
-    )
-]

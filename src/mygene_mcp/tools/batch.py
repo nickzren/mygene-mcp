@@ -1,12 +1,9 @@
-# src/mygene_mcp/tools/batch.py
 """Batch operation tools."""
 
 from typing import Any, Dict, List, Optional
-import mcp.types as types
 from ..client import MyGeneClient, MyGeneError
 
 MAX_BATCH_SIZE = 1000
-
 
 class BatchApi:
     """Tools for batch operations on genes."""
@@ -26,13 +23,13 @@ class BatchApi:
             raise MyGeneError(f"Batch size exceeds maximum of {MAX_BATCH_SIZE}")
         
         post_data = {
-            "ids": gene_ids,
+            "q": gene_ids,
             "scopes": scopes,
             "fields": fields
         }
         if species:
             post_data["species"] = species
-        if not dotfield:
+        if dotfield is False:
             post_data["dotfield"] = False
         # Fix: Always include returnall when it's explicitly set
         if returnall is not None:
@@ -44,10 +41,14 @@ class BatchApi:
         found = []
         missing = []
         for result in results:
-            if result.get("found", False):
-                found.append(result)
-            else:
+            is_missing = bool(result.get("notfound"))
+            if "found" in result:
+                is_missing = not bool(result.get("found"))
+
+            if is_missing:
                 missing.append(result.get("query", "Unknown"))
+            else:
+                found.append(result)
         
         return {
             "success": True,
@@ -77,7 +78,7 @@ class BatchApi:
             post_data["fields"] = fields
         if species:
             post_data["species"] = species
-        if not dotfield:
+        if dotfield is False:
             post_data["dotfield"] = False
         if filter_:
             post_data["filter"] = filter_
@@ -91,82 +92,3 @@ class BatchApi:
             "total": len(results),
             "genes": results
         }
-
-
-BATCH_TOOLS = [
-    types.Tool(
-        name="query_genes_batch",
-        description="Query multiple genes in a single request (up to 1000)",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_ids": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of gene IDs or symbols to query"
-                },
-                "scopes": {
-                    "type": "string",
-                    "description": "Comma-separated fields to search",
-                    "default": "entrezgene,ensemblgene,symbol"
-                },
-                "fields": {
-                    "type": "string",
-                    "description": "Comma-separated fields to return",
-                    "default": "symbol,name,taxid,entrezgene"
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter"
-                },
-                "dotfield": {
-                    "type": "boolean",
-                    "description": "Control dotfield notation",
-                    "default": True
-                },
-                "returnall": {
-                    "type": "boolean",
-                    "description": "Return all results including no matches",
-                    "default": True
-                }
-            },
-            "required": ["gene_ids"]
-        }
-    ),
-    types.Tool(
-        name="get_genes_batch",
-        description="Get full annotations for multiple genes (up to 1000)",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_ids": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of gene IDs"
-                },
-                "fields": {
-                    "type": "string",
-                    "description": "Comma-separated fields to return"
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter"
-                },
-                "dotfield": {
-                    "type": "boolean",
-                    "description": "Control dotfield notation",
-                    "default": True
-                },
-                "filter_": {
-                    "type": "string",
-                    "description": "Filter expression"
-                },
-                "email": {
-                    "type": "string",
-                    "description": "Email for large requests"
-                }
-            },
-            "required": ["gene_ids"]
-        }
-    )
-]

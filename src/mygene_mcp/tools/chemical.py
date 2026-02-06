@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/chemical.py
 """Chemical and drug interaction tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class ChemicalApi:
     """Tools for chemical/drug interaction queries."""
@@ -182,57 +179,3 @@ class ChemicalApi:
             "chemical_interactions": chemical_data
         }
 
-
-CHEMICAL_TOOLS = [
-    types.Tool(
-        name="query_genes_by_chemical",
-        description="Find genes that interact with specific chemicals or drugs",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "chemical_name": {
-                    "type": "string",
-                    "description": "Chemical or drug name (e.g., 'aspirin', 'imatinib')"
-                },
-                "chemical_id": {
-                    "type": "string",
-                    "description": "Chemical ID (e.g., 'CHEMBL25', 'DB00619', 'CHEBI:15365')"
-                },
-                "interaction_type": {
-                    "type": "string",
-                    "description": "Type of interaction (for PharmGKB)"
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter",
-                    "default": "human"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results",
-                    "default": 10
-                }
-            }
-        }
-    ),
-    types.Tool(
-        name="get_gene_chemical_interactions",
-        description="Get all chemical/drug interactions for a specific gene",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez, Ensembl, or symbol)"
-                },
-                "sources": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Filter by specific sources",
-                    "enum": ["pharmgkb", "chebi", "chembl", "drugbank"]
-                }
-            },
-            "required": ["gene_id"]
-        }
-    )
-]

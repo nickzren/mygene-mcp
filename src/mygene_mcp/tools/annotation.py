@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/annotation.py
 """Gene annotation tools."""
 
 from typing import Any, Dict, Optional
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class AnnotationApi:
     """Tool for retrieving gene annotations from MyGene.info API."""
@@ -33,33 +30,3 @@ class AnnotationApi:
             "gene": result
         }
 
-
-ANNOTATION_TOOLS = [
-    types.Tool(
-        name="get_gene_annotation",
-        description="Get detailed annotation for a specific gene by ID (Entrez or Ensembl)",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez like '1017' or Ensembl like 'ENSG00000123374')"
-                },
-                "fields": {
-                    "type": "string",
-                    "description": "Comma-separated fields to return (default: all)"
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter"
-                },
-                "dotfield": {
-                    "type": "boolean",
-                    "description": "Control dotfield notation in response",
-                    "default": True
-                }
-            },
-            "required": ["gene_id"]
-        }
-    )
-]

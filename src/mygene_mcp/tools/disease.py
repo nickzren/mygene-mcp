@@ -1,10 +1,7 @@
-# src/mygene_mcp/tools/disease.py
 """Disease association tools."""
 
 from typing import Any, Dict, Optional, List
-import mcp.types as types
 from ..client import MyGeneClient
-
 
 class DiseaseApi:
     """Tools for disease-related gene queries."""
@@ -174,58 +171,3 @@ class DiseaseApi:
             "disease_associations": disease_associations
         }
 
-
-DISEASE_TOOLS = [
-    types.Tool(
-        name="query_genes_by_disease",
-        description="Find genes associated with specific diseases",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "disease_name": {
-                    "type": "string",
-                    "description": "Disease name (e.g., 'breast cancer', 'alzheimer disease')"
-                },
-                "disease_id": {
-                    "type": "string",
-                    "description": "Disease ID (e.g., 'OMIM:114480', 'C0006142')"
-                },
-                "source": {
-                    "type": "string",
-                    "description": "Disease database source",
-                    "enum": ["disgenet", "clinvar", "omim"]
-                },
-                "species": {
-                    "type": "string",
-                    "description": "Species filter",
-                    "default": "human"
-                },
-                "size": {
-                    "type": "integer",
-                    "description": "Number of results",
-                    "default": 10
-                }
-            }
-        }
-    ),
-    types.Tool(
-        name="get_gene_disease_associations",
-        description="Get all disease associations for a specific gene",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "gene_id": {
-                    "type": "string",
-                    "description": "Gene ID (Entrez, Ensembl, or symbol)"
-                },
-                "sources": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Filter by specific disease sources",
-                    "enum": ["disgenet", "clinvar", "omim"]
-                }
-            },
-            "required": ["gene_id"]
-        }
-    )
-]

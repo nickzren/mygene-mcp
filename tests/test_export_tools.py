@@ -304,5 +304,89 @@ class TestExportTools:
         
         # Complex data should be JSON stringified in XML
         assert "<symbol>COMPLEX1</symbol>" in result
-        assert '["ALIAS1", "ALIAS2"]' in result  # Arrays as JSON
+        assert "[&quot;ALIAS1&quot;, &quot;ALIAS2&quot;]" in result  # Arrays as escaped JSON
         assert "hsa04110" in result  # Nested data as JSON
+
+    @pytest.mark.asyncio
+    async def test_export_gene_list_xml_nested_field(self, mock_client):
+        """Test XML export resolves nested dotted fields."""
+        mock_client.post.return_value = [
+            {
+                "symbol": "CDK2",
+                "ensembl": {"gene": "ENSG00000123374"}
+            }
+        ]
+
+        api = ExportApi()
+        result = await api.export_gene_list(
+            mock_client,
+            gene_ids=["1017"],
+            format="xml",
+            fields=["symbol", "ensembl.gene"]
+        )
+
+        assert "<ensembl.gene>ENSG00000123374</ensembl.gene>" in result
+
+    @pytest.mark.asyncio
+    async def test_export_gene_list_xml_escapes_values(self, mock_client):
+        """Test XML export escapes special characters."""
+        mock_client.post.return_value = [
+            {
+                "symbol": "A&B",
+                "name": 'x < y "quoted"'
+            }
+        ]
+
+        api = ExportApi()
+        result = await api.export_gene_list(
+            mock_client,
+            gene_ids=["TEST"],
+            format="xml",
+            fields=["symbol", "name"]
+        )
+
+        assert "<symbol>A&amp;B</symbol>" in result
+        assert "<name>x &lt; y &quot;quoted&quot;</name>" in result
+
+    @pytest.mark.asyncio
+    async def test_export_gene_list_xml_invalid_tag_name(self, mock_client):
+        """Test XML export rejects invalid field names as tags."""
+        mock_client.post.return_value = [{"symbol": "CDK2"}]
+
+        api = ExportApi()
+        with pytest.raises(ValueError, match="Invalid XML field name"):
+            await api.export_gene_list(
+                mock_client,
+                gene_ids=["1017"],
+                format="xml",
+                fields=["bad field"]
+            )
+
+    @pytest.mark.asyncio
+    async def test_export_gene_list_extracts_nested_list_paths(self, mock_client):
+        """Test dotted-field extraction can traverse list entries."""
+        mock_client.post.return_value = [
+            {
+                "symbol": "GENE1",
+                "go": {
+                    "BP": [
+                        {"id": "GO:0001", "term": "a"},
+                        {"id": "GO:0002", "term": "b"},
+                    ]
+                }
+            }
+        ]
+
+        api = ExportApi()
+        result = await api.export_gene_list(
+            mock_client,
+            gene_ids=["GENE1"],
+            format="tsv",
+            fields=["symbol", "go.BP.id"]
+        )
+
+        rows = list(csv.DictReader(io.StringIO(result), delimiter="\t"))
+        assert len(rows) == 1
+        assert rows[0]["symbol"] == "GENE1"
+        assert "GO:0001" in rows[0]["go.BP.id"]
+        assert "GO:0002" in rows[0]["go.BP.id"]

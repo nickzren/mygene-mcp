@@ -1,5 +1,10 @@
 # MyGene MCP Server
 
+[![CI](https://github.com/nickzren/mygene-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/nickzren/mygene-mcp/actions/workflows/ci.yml)
+[![MCP Server](https://img.shields.io/badge/MCP-Server-0A66C2.svg)](https://modelcontextprotocol.io/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A Model Context Protocol (MCP) server that exposes the [MyGene.info](https://mygene.info/) API as a set of tools for AI assistants.
 
 ## Features
@@ -109,5 +114,6 @@ When running with `--transport sse` or `--transport http`, the server exposes a 
 #### Development
 
 ```bash
+uv sync --extra dev
 uv run pytest tests/ -v
 ```
